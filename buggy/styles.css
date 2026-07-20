@@ -1,0 +1,195 @@
+:root {
+  --cell: 34px;
+  --bg: #0d1b2a;
+  --panel: #1b263b;
+  --line: #415a77;
+  --water: #22384f;
+  --ship: #6c757d;
+  --hit: #e63946;
+  --miss: #90a4ae;
+  --sunk: #7b1e1e;
+  --ok: #2a9d8f;
+  --bad: #c1121f;
+  --text: #e0e1dd;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 1.5rem;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+
+h1 {
+  margin: 0 0 0.25rem;
+  letter-spacing: 0.1em;
+}
+
+.status {
+  min-height: 1.4em;
+  font-size: 1.1rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+
+.placement-info {
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+button {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--line);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.boards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.board-panel {
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.board-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(11, var(--cell));
+  grid-template-rows: repeat(11, var(--cell));
+  gap: 2px;
+}
+
+.cell {
+  width: var(--cell);
+  height: var(--cell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  background: var(--water);
+  border-radius: 3px;
+  user-select: none;
+}
+
+.cell.label {
+  background: transparent;
+  color: var(--text);
+  font-weight: bold;
+}
+
+#ai-board .cell:not(.label):hover {
+  outline: 2px solid var(--ok);
+  cursor: crosshair;
+}
+
+.cell.ship {
+  background: var(--ship);
+}
+
+.cell.hit {
+  background: var(--hit);
+}
+
+.cell.hit::after {
+  content: '✕';
+  color: #fff;
+}
+
+.cell.miss {
+  background: var(--miss);
+}
+
+.cell.miss::after {
+  content: '•';
+  color: #37474f;
+}
+
+.cell.sunk {
+  background: var(--sunk);
+}
+
+.cell.sunk::after {
+  content: '✕';
+  color: #fff;
+}
+
+.cell.preview-ok {
+  background: var(--ok);
+}
+
+.cell.preview-bad {
+  background: var(--bad);
+}
+
+.fleet {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.fleet li {
+  padding: 0.15rem 0;
+}
+
+.fleet li.sunk-ship {
+  text-decoration: line-through;
+  color: var(--miss);
+}
+
+.fleet li.pending {
+  opacity: 0.55;
+}
+
+/* Demo-only banner marking this as the pre-fix (buggy) build. */
+.prefix-banner {
+  background: #c1121f;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  font-weight: bold;
+  border-radius: 6px;
+  margin: 0 0 1rem;
+}
+
+.prefix-banner a {
+  color: #fff;
+  text-decoration: underline;
+}

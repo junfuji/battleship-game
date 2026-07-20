@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Battleship</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="prefix-banner">
+      Pre-fix build — intentionally contains the placement-preview bug.
+      <a href="../">Play the fixed version here.</a>
+    </div>
+    <header>
+      <h1>Battleship</h1>
+      <p id="status" class="status">Loading…</p>
+    </header>
+
+    <section id="setup-controls" class="controls">
+      <span id="placement-info" class="placement-info"></span>
+      <button id="orientation-btn" type="button">Rotate: horizontal</button>
+      <button id="random-btn" type="button">Random placement</button>
+      <button id="reset-btn" type="button">Reset placement</button>
+      <button id="start-btn" type="button" disabled>Start game</button>
+    </section>
+
+    <main class="boards">
+      <section class="board-panel">
+        <h2>Your fleet</h2>
+        <div id="player-board" class="board"></div>
+        <ul id="player-fleet" class="fleet"></ul>
+      </section>
+
+      <section class="board-panel">
+        <h2>Enemy waters</h2>
+        <div id="ai-board" class="board"></div>
+        <ul id="ai-fleet" class="fleet"></ul>
+      </section>
+    </main>
+
+    <footer class="controls">
+      <button id="new-game-btn" type="button">New game</button>
+    </footer>
+
+    <script type="module">
+      import { init } from './ui.js';
+      init();
+    </script>
+  </body>
+</html>
