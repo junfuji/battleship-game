@@ -49,6 +49,19 @@ export function shipCells(row, col, length, orientation) {
   return cells;
 }
 
+// The ship's intended cells clipped to the board (off-board cells dropped).
+// Unlike shipCells this never returns null, so callers can render the on-board
+// portion of an out-of-bounds placement. Legality is decided by canPlaceShip.
+export function clippedShipCells(row, col, length, orientation) {
+  const cells = [];
+  for (let i = 0; i < length; i++) {
+    const r = orientation === ORIENTATIONS.VERTICAL ? row + i : row;
+    const c = orientation === ORIENTATIONS.HORIZONTAL ? col + i : col;
+    if (inBounds(r, c)) cells.push({ row: r, col: c });
+  }
+  return cells;
+}
+
 // Placement is legal when every cell is on-board and none overlaps an existing
 // ship. Ships touching edge-to-edge is allowed, so we only reject exact overlaps.
 export function canPlaceShip(board, row, col, length, orientation) {

@@ -11,7 +11,7 @@ import {
   placeShip,
   clearShips,
   isFleetComplete,
-  shipCells,
+  clippedShipCells,
   fireAt,
   allSunk,
   remainingShips,
@@ -111,7 +111,14 @@ function renderPlayerBoard() {
   // Placement preview overlay.
   if (state.phase === PHASE.PLACEMENT && state.preview) {
     const { length } = FLEET[state.placeIndex];
-    const cells = shipCells(state.preview.row, state.preview.col, length, state.orientation);
+    // Render the on-board portion of the ship regardless of legality; an
+    // out-of-bounds hover still shows its clipped cells as illegal (preview-bad).
+    const cells = clippedShipCells(
+      state.preview.row,
+      state.preview.col,
+      length,
+      state.orientation
+    );
     const legal = canPlaceShip(
       state.playerBoard,
       state.preview.row,
@@ -119,11 +126,9 @@ function renderPlayerBoard() {
       length,
       state.orientation
     );
-    if (cells) {
-      for (const c of cells) {
-        const cell = cellEl(container, c.row, c.col);
-        if (cell) cell.classList.add(legal ? 'preview-ok' : 'preview-bad');
-      }
+    for (const c of cells) {
+      const cell = cellEl(container, c.row, c.col);
+      if (cell) cell.classList.add(legal ? 'preview-ok' : 'preview-bad');
     }
   }
 }
