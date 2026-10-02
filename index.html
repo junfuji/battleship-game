@@ -7,35 +7,98 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header>
-      <h1>Battleship</h1>
-      <p id="status" class="status">Loading…</p>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Battleship home">
+        <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M5 18h22l-4 7H9l-4-7Z" fill="currentColor" />
+          <path d="M11 18v-6h10v6M16 12V5m0 3h7M4 28c2-2 4-2 6 0s4 2 6 0 4-2 6 0 4 2 6 0" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+        </svg>
+        <span>Battleship<small>Tactical naval combat</small></span>
+      </a>
+      <div class="topbar-actions">
+        <span class="mode-badge"><span class="signal-dot"></span> Player vs. AI</span>
+        <button id="new-game-btn" class="button button-quiet" type="button">New game <span aria-hidden="true">↗</span></button>
+      </div>
     </header>
 
-    <section id="setup-controls" class="controls">
-      <span id="placement-info" class="placement-info"></span>
-      <button id="orientation-btn" type="button">Rotate: horizontal</button>
-      <button id="random-btn" type="button">Random placement</button>
-      <button id="reset-btn" type="button">Reset placement</button>
-      <button id="start-btn" type="button" disabled>Start game</button>
-    </section>
-
-    <main class="boards">
-      <section class="board-panel">
-        <h2>Your fleet</h2>
-        <div id="player-board" class="board"></div>
-        <ul id="player-fleet" class="fleet"></ul>
+    <main class="command-center">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">The ocean is your chessboard</p>
+          <h1 id="page-title">Take command<span>.</span></h1>
+          <p class="intro-copy">Position your fleet. Find your opponent. Rule the waters.</p>
+        </div>
+        <ol class="mission-steps" aria-label="Game progress">
+          <li id="step-deploy" aria-current="step"><span>01</span> Deploy</li>
+          <li id="step-engage"><span>02</span> Engage</li>
+          <li id="step-result"><span>03</span><span id="result-label" class="step-name">Victory</span></li>
+        </ol>
       </section>
 
-      <section class="board-panel">
-        <h2>Enemy waters</h2>
-        <div id="ai-board" class="board"></div>
-        <ul id="ai-fleet" class="fleet"></ul>
+      <section class="mission-bar" aria-label="Mission status">
+        <span id="phase-label" class="phase-label">Deployment</span>
+        <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true">Preparing your command station…</p>
+        <span id="turn-indicator" class="turn-indicator">Awaiting orders</span>
+      </section>
+
+      <section id="setup-controls" class="deployment" aria-label="Fleet deployment controls">
+        <div class="deployment-info">
+          <span class="eyebrow">Deployment orders</span>
+          <span id="placement-info" class="placement-info"></span>
+        </div>
+        <div class="deployment-actions">
+          <button id="orientation-btn" class="button button-secondary" type="button">Rotate: horizontal</button>
+          <button id="random-btn" class="button button-secondary" type="button">Random placement</button>
+          <button id="reset-btn" class="button button-quiet" type="button">Reset</button>
+          <button id="start-btn" class="button button-primary" type="button" disabled>Start game <span aria-hidden="true">→</span></button>
+        </div>
+      </section>
+
+      <div class="boards">
+        <section class="board-panel friendly-panel" aria-labelledby="player-heading">
+          <div class="panel-heading">
+            <div><p class="eyebrow">Your territory</p><h2 id="player-heading">Friendly waters</h2></div>
+            <span id="player-count" class="fleet-count">0 / 5 deployed</span>
+          </div>
+          <div class="board-frame">
+            <div class="board-caption"><span><span class="signal-dot"></span> Friendly sector</span><span>10 × 10</span></div>
+            <div id="player-board" class="board" role="group" aria-label="Your fleet board" aria-describedby="player-hint"></div>
+          </div>
+          <p id="player-hint" class="board-hint">Click a cell to place your ship. Rotate to change direction.</p>
+          <div class="fleet-heading"><h3>Fleet manifest</h3><span>5 vessels · 17 cells</span></div>
+          <ul id="player-fleet" class="fleet"></ul>
+        </section>
+
+        <section class="board-panel enemy-panel" aria-labelledby="ai-heading">
+          <div class="panel-heading">
+            <div><p class="eyebrow">Uncharted territory</p><h2 id="ai-heading">Enemy waters</h2></div>
+            <span id="ai-count" class="fleet-count">5 / 5 afloat</span>
+          </div>
+          <div class="board-frame">
+            <div class="board-caption"><span><span class="signal-dot"></span> Enemy sector</span><span>10 × 10</span></div>
+            <div id="ai-board" class="board" role="group" aria-label="Enemy waters board" aria-describedby="ai-hint"></div>
+          </div>
+          <p id="ai-hint" class="board-hint">Enemy positions are concealed. Deploy your fleet to begin.</p>
+          <div class="fleet-heading"><h3>Enemy intelligence</h3><span id="shot-summary">No shots fired</span></div>
+          <ul id="ai-fleet" class="fleet"></ul>
+        </section>
+      </div>
+
+      <section class="field-guide" aria-label="Board legend">
+        <span class="eyebrow">Know your waters</span>
+        <ul class="legend">
+          <li><span class="legend-mark legend-ship" aria-hidden="true"></span> Your ship</li>
+          <li><span class="legend-mark legend-hit" aria-hidden="true">×</span> Hit</li>
+          <li><span class="legend-mark legend-miss" aria-hidden="true">·</span> Miss</li>
+          <li><span class="legend-mark legend-sunk" aria-hidden="true">×</span> Sunk</li>
+        </ul>
+        <p>One shot. One turn. Make it count.</p>
       </section>
     </main>
 
-    <footer class="controls">
-      <button id="new-game-btn" type="button">New game</button>
+    <footer class="page-footer">
+      <span>Battleship / Fleet command</span>
+      <span>Navigate cells with arrow keys · Enter or Space to select</span>
     </footer>
 
     <script type="module">

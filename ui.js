@@ -23,6 +23,8 @@ import { createAI, nextShot, registerResult } from './ai.js';
 const PHASE = { PLACEMENT: 'placement', PLAYER_TURN: 'player', AI_TURN: 'ai', OVER: 'over' };
 
 let state;
+let aiTimer;
+let keyboardShotCell;
 
 function newState() {
   return {
@@ -58,14 +60,27 @@ function buildGrid(container, onCellClick, onCellHover) {
   for (let row = 0; row < BOARD_SIZE; row++) {
     grid.appendChild(labelCell(String(row + 1))); // row number 1-10
     for (let col = 0; col < BOARD_SIZE; col++) {
-      const cell = document.createElement('div');
+      const cell = document.createElement('button');
+      cell.type = 'button';
       cell.className = 'cell';
+      cell.tabIndex = row === 0 && col === 0 ? 0 : -1;
       cell.dataset.row = row;
       cell.dataset.col = col;
-      if (onCellClick) cell.addEventListener('click', () => onCellClick(row, col));
+      if (onCellClick) {
+        cell.addEventListener('click', (event) => onCellClick(row, col, event.detail === 0));
+      }
+      cell.addEventListener('focus', () => {
+        for (const other of grid.querySelectorAll('button.cell')) other.tabIndex = -1;
+        cell.tabIndex = 0;
+        if (onCellHover) onCellHover(row, col);
+      });
+      cell.addEventListener('keydown', (event) =>
+        moveBoardFocus(event, container, row, col)
+      );
       if (onCellHover) {
         cell.addEventListener('mouseenter', () => onCellHover(row, col));
         cell.addEventListener('mouseleave', () => onCellHover(null, null));
+        cell.addEventListener('blur', () => onCellHover(null, null));
       }
       grid.appendChild(cell);
     }
@@ -84,14 +99,47 @@ function cellEl(container, row, col) {
   return container.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
 }
 
+function moveBoardFocus(event, container, row, col) {
+  const directions = {
+    ArrowUp: [-1, 0],
+    ArrowDown: [1, 0],
+    ArrowLeft: [0, -1],
+    ArrowRight: [0, 1],
+  };
+  const direction = directions[event.key];
+  if (!direction) return;
+  event.preventDefault();
+  for (let step = 1; step < BOARD_SIZE; step++) {
+    const nextRow = (row + direction[0] * step + BOARD_SIZE) % BOARD_SIZE;
+    const nextCol = (col + direction[1] * step + BOARD_SIZE) % BOARD_SIZE;
+    const next = cellEl(container, nextRow, nextCol);
+    if (!next.disabled) {
+      next.focus();
+      return;
+    }
+  }
+}
+
+function updateBoardTabStop(container) {
+  const cells = [...container.querySelectorAll('button.cell')];
+  const active =
+    cells.find((cell) => !cell.disabled && cell.tabIndex === 0) ||
+    cells.find((cell) => !cell.disabled);
+  for (const cell of cells) cell.tabIndex = cell === active ? 0 : -1;
+}
+
 // ---- Rendering -------------------------------------------------------------
 
 // Render the player's board: own ships visible, plus shots the AI took.
 function renderPlayerBoard() {
   const container = el('player-board');
   const occupied = new Set();
+  const sunkCells = new Set();
   for (const ship of state.playerBoard.ships) {
-    for (const c of ship.cells) occupied.add(cellKey(c.row, c.col));
+    for (const c of ship.cells) {
+      occupied.add(cellKey(c.row, c.col));
+      if (ship.hits.size === ship.length) sunkCells.add(cellKey(c.row, c.col));
+    }
   }
 
   for (let row = 0; row < BOARD_SIZE; row++) {
@@ -105,11 +153,18 @@ function renderPlayerBoard() {
       if (isShip) cell.classList.add('ship');
       if (wasShot && isShip) cell.classList.add('hit');
       if (wasShot && !isShip) cell.classList.add('miss');
+      if (sunkCells.has(key)) cell.classList.add('sunk');
+      cell.disabled = state.phase !== PHASE.PLACEMENT || isFleetComplete(state.playerBoard);
+      const description = sunkCells.has(key)
+        ? 'sunk ship'
+        : wasShot ? (isShip ? 'hit ship' : 'miss') : isShip ? 'your ship' : 'water';
+      cell.setAttribute('aria-label', `${COLUMNS[col]}${row + 1}, ${description}`);
     }
   }
+  updateBoardTabStop(container);
 
   // Placement preview overlay.
-  if (state.phase === PHASE.PLACEMENT && state.preview) {
+  if (state.phase === PHASE.PLACEMENT && state.preview && !isFleetComplete(state.playerBoard)) {
     const { length } = FLEET[state.placeIndex];
     // Render the on-board portion of the ship regardless of legality; an
     // out-of-bounds hover still shows its clipped cells as illegal (preview-bad).
@@ -162,8 +217,14 @@ function renderAIBoard() {
       } else if (wasShot) {
         cell.classList.add('miss');
       }
+      cell.disabled = state.phase !== PHASE.PLAYER_TURN || wasShot;
+      const description = sunkCells.has(key)
+        ? 'sunk ship'
+        : wasShot ? (isShip ? 'hit' : 'miss') : 'untried';
+      cell.setAttribute('aria-label', `${COLUMNS[col]}${row + 1}, ${description}`);
     }
   }
+  updateBoardTabStop(container);
 }
 
 function renderFleetLists() {
@@ -181,12 +242,27 @@ function renderFleetList(id, board, isPlayer) {
 
   for (const { name, length } of FLEET) {
     const li = document.createElement('li');
-    li.textContent = `${name} (${length})`;
+    const title = document.createElement('span');
+    title.className = 'fleet-name';
+    title.textContent = name;
+    const segments = document.createElement('span');
+    segments.className = 'fleet-segments';
+    segments.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < length; i++) segments.appendChild(document.createElement('span'));
+    const badge = document.createElement('span');
+    badge.className = 'fleet-state';
+    badge.textContent = isPlayer ? 'Ready' : 'Unknown';
     if (isPlayer && state.phase === PHASE.PLACEMENT && !placedNames.has(name)) {
       li.classList.add('pending');
+      const next = name === FLEET[state.placeIndex]?.name;
+      if (next) li.classList.add('next-ship');
+      badge.textContent = next ? 'Up next' : 'Unplaced';
     } else if (!remaining.has(name) && placedNames.has(name)) {
       li.classList.add('sunk-ship');
+      badge.textContent = 'Sunk';
     }
+    li.setAttribute('aria-label', `${name}, ${length} cells, ${badge.textContent}`);
+    li.append(title, segments, badge);
     ul.appendChild(li);
   }
 }
@@ -194,15 +270,47 @@ function renderFleetList(id, board, isPlayer) {
 function renderPlacementControls() {
   const setup = el('setup-controls');
   const show = state.phase === PHASE.PLACEMENT;
-  setup.style.display = show ? 'flex' : 'none';
+  setup.hidden = !show;
   if (show) {
     const next = isFleetComplete(state.playerBoard)
       ? 'All ships placed'
-      : `Placing: ${FLEET[state.placeIndex].name} (${FLEET[state.placeIndex].length})`;
+      : `Place your ${FLEET[state.placeIndex].name} · ${FLEET[state.placeIndex].length} cells`;
     el('placement-info').textContent = next;
     el('orientation-btn').textContent = `Rotate: ${state.orientation}`;
     el('start-btn').disabled = !isFleetComplete(state.playerBoard);
   }
+}
+
+function renderMission() {
+  const placement = state.phase === PHASE.PLACEMENT;
+  const over = state.phase === PHASE.OVER;
+  const victory = over && allSunk(state.aiBoard);
+  document.body.dataset.phase = state.phase;
+  el('phase-label').textContent = placement ? 'Deployment' : over ? (victory ? 'Victory' : 'Defeat') : 'Engagement';
+  el('turn-indicator').textContent = placement ? 'Awaiting orders' : over ? 'Mission complete' : state.phase === PHASE.AI_TURN ? 'AI targeting' : 'Your turn';
+  const currentStep = placement ? 'step-deploy' : over ? 'step-result' : 'step-engage';
+  for (const id of ['step-deploy', 'step-engage', 'step-result']) {
+    el(id).removeAttribute('aria-current');
+    el(id).classList.toggle('complete',
+      (id === 'step-deploy' && !placement) || (id === 'step-engage' && over)
+    );
+    if (id === currentStep) el(id).setAttribute('aria-current', 'step');
+  }
+  el('result-label').textContent = over && !victory ? 'Defeat' : 'Victory';
+  el('player-count').textContent = placement
+    ? `${state.playerBoard.ships.length} / ${FLEET.length} deployed`
+    : `${remainingShips(state.playerBoard).length} / ${FLEET.length} afloat`;
+  el('ai-count').textContent = `${placement ? FLEET.length : remainingShips(state.aiBoard).length} / ${FLEET.length} afloat`;
+  const shots = state.aiBoard.shots.size;
+  const hits = state.aiBoard.ships.reduce((sum, ship) => sum + ship.hits.size, 0);
+  el('shot-summary').textContent = shots ? `${shots} shots · ${hits} hits` : 'No shots fired';
+  el('player-hint').textContent = placement
+    ? isFleetComplete(state.playerBoard) ? 'Fleet deployed. Start the game when you are ready.' : 'Click a cell to place your ship. Rotate to change direction.'
+    : 'Your fleet is visible here. Watch for incoming enemy fire.';
+  el('ai-hint').textContent = placement ? 'Enemy positions are concealed. Deploy your fleet to begin.'
+    : over ? 'Mission complete. Start a new game to sail again.'
+    : state.phase === PHASE.AI_TURN ? 'Hold position. The enemy is choosing a target.'
+    : 'Choose an untried cell to fire. Every shot counts.';
 }
 
 function render() {
@@ -210,6 +318,7 @@ function render() {
   renderAIBoard();
   renderFleetLists();
   renderPlacementControls();
+  renderMission();
 }
 
 // ---- Placement phase -------------------------------------------------------
@@ -251,6 +360,7 @@ function rotate() {
 function doRandomPlacement() {
   randomPlacement(state.playerBoard);
   state.placeIndex = FLEET.length;
+  state.preview = null;
   setStatus('Random fleet placed. Click "Start game" to play.');
   render();
 }
@@ -273,7 +383,7 @@ function startGame() {
 
 // ---- Combat phase ----------------------------------------------------------
 
-function onAICellClick(row, col) {
+function onAICellClick(row, col, fromKeyboard) {
   if (state.phase !== PHASE.PLAYER_TURN) return;
 
   const result = fireAt(state.aiBoard, row, col);
@@ -281,6 +391,7 @@ function onAICellClick(row, col) {
     setStatus('You already fired there — pick another cell.');
     return;
   }
+  keyboardShotCell = fromKeyboard ? cellEl(el('ai-board'), row, col) : null;
 
   if (result.hit && result.sunk) {
     setStatus(`Hit! You sank the enemy ${result.shipName}.`);
@@ -289,9 +400,8 @@ function onAICellClick(row, col) {
   } else {
     setStatus('Miss.');
   }
-  render();
-
   if (allSunk(state.aiBoard)) {
+    keyboardShotCell = null;
     state.phase = PHASE.OVER;
     setStatus('Victory! You sank the entire enemy fleet.');
     render();
@@ -299,11 +409,13 @@ function onAICellClick(row, col) {
   }
 
   state.phase = PHASE.AI_TURN;
+  render();
   // Small delay so the player sees their result before the AI responds.
-  setTimeout(aiTurn, 600);
+  aiTimer = setTimeout(aiTurn, 600);
 }
 
 function aiTurn() {
+  aiTimer = null;
   if (state.phase !== PHASE.AI_TURN) return;
 
   const shot = nextShot(state.ai);
@@ -318,9 +430,8 @@ function aiTurn() {
   } else {
     setStatus(`AI fired at ${coord} — miss. Your turn.`);
   }
-  render();
-
   if (allSunk(state.playerBoard)) {
+    keyboardShotCell = null;
     state.phase = PHASE.OVER;
     setStatus('Defeat — the AI sank your entire fleet.');
     render();
@@ -328,11 +439,22 @@ function aiTurn() {
   }
 
   state.phase = PHASE.PLAYER_TURN;
+  render();
+  if (keyboardShotCell &&
+      (document.activeElement === document.body || document.activeElement === keyboardShotCell)) {
+    const next = [...el('ai-board').querySelectorAll('button.cell')]
+      .find((cell) => cell.tabIndex === 0);
+    if (next) next.focus();
+  }
+  keyboardShotCell = null;
 }
 
 // ---- Wiring ----------------------------------------------------------------
 
 function newGame() {
+  clearTimeout(aiTimer);
+  aiTimer = null;
+  keyboardShotCell = null;
   state = newState();
   buildGrid(el('player-board'), onPlayerCellClick, onPlayerCellHover);
   buildGrid(el('ai-board'), onAICellClick, null);
