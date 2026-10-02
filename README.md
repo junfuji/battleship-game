@@ -22,6 +22,20 @@ python3 -m http.server 8000
 
 Or use the VS Code "Live Server" extension, or any other static file server.
 
+## Tests
+
+With Node.js 22 or newer installed, run:
+
+```bash
+npm test
+```
+
+No dependency installation is needed. The suite uses Node's built-in test runner
+and covers placement boundaries and overlap, clipped preview geometry, firing
+and sinking, fleet reset and random placement, AI targeting, and complete games.
+Random scenarios use fixed seeds for repeatable results. These are game/AI logic
+tests; browser rendering and click interactions are not covered.
+
 ## How to play
 
 1. **Placement:** Place your five ships on your grid by clicking. Use **Rotate**
