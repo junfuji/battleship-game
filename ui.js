@@ -24,6 +24,7 @@ const PHASE = { PLACEMENT: 'placement', PLAYER_TURN: 'player', AI_TURN: 'ai', OV
 
 let state;
 let aiTimer;
+let keyboardShotCell;
 
 function newState() {
   return {
@@ -65,7 +66,9 @@ function buildGrid(container, onCellClick, onCellHover) {
       cell.tabIndex = row === 0 && col === 0 ? 0 : -1;
       cell.dataset.row = row;
       cell.dataset.col = col;
-      if (onCellClick) cell.addEventListener('click', () => onCellClick(row, col));
+      if (onCellClick) {
+        cell.addEventListener('click', (event) => onCellClick(row, col, event.detail === 0));
+      }
       cell.addEventListener('focus', () => {
         for (const other of grid.querySelectorAll('button.cell')) other.tabIndex = -1;
         cell.tabIndex = 0;
@@ -380,7 +383,7 @@ function startGame() {
 
 // ---- Combat phase ----------------------------------------------------------
 
-function onAICellClick(row, col) {
+function onAICellClick(row, col, fromKeyboard) {
   if (state.phase !== PHASE.PLAYER_TURN) return;
 
   const result = fireAt(state.aiBoard, row, col);
@@ -388,6 +391,7 @@ function onAICellClick(row, col) {
     setStatus('You already fired there — pick another cell.');
     return;
   }
+  keyboardShotCell = fromKeyboard ? cellEl(el('ai-board'), row, col) : null;
 
   if (result.hit && result.sunk) {
     setStatus(`Hit! You sank the enemy ${result.shipName}.`);
@@ -397,6 +401,7 @@ function onAICellClick(row, col) {
     setStatus('Miss.');
   }
   if (allSunk(state.aiBoard)) {
+    keyboardShotCell = null;
     state.phase = PHASE.OVER;
     setStatus('Victory! You sank the entire enemy fleet.');
     render();
@@ -426,6 +431,7 @@ function aiTurn() {
     setStatus(`AI fired at ${coord} — miss. Your turn.`);
   }
   if (allSunk(state.playerBoard)) {
+    keyboardShotCell = null;
     state.phase = PHASE.OVER;
     setStatus('Defeat — the AI sank your entire fleet.');
     render();
@@ -434,6 +440,13 @@ function aiTurn() {
 
   state.phase = PHASE.PLAYER_TURN;
   render();
+  if (keyboardShotCell &&
+      (document.activeElement === document.body || document.activeElement === keyboardShotCell)) {
+    const next = [...el('ai-board').querySelectorAll('button.cell')]
+      .find((cell) => cell.tabIndex === 0);
+    if (next) next.focus();
+  }
+  keyboardShotCell = null;
 }
 
 // ---- Wiring ----------------------------------------------------------------
@@ -441,6 +454,7 @@ function aiTurn() {
 function newGame() {
   clearTimeout(aiTimer);
   aiTimer = null;
+  keyboardShotCell = null;
   state = newState();
   buildGrid(el('player-board'), onPlayerCellClick, onPlayerCellHover);
   buildGrid(el('ai-board'), onAICellClick, null);

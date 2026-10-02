@@ -387,9 +387,14 @@ h1 > span {
   background: #d6a07b;
 }
 
+.board {
+  overflow-x: auto;
+  padding: 3px;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: 18px repeat(10, minmax(0, 1fr));
+  grid-template-columns: 18px repeat(10, minmax(28px, 1fr));
   gap: 4px;
 }
 
@@ -847,7 +852,7 @@ body[data-phase="over"] .phase-label {
   }
 
   .grid {
-    grid-template-columns: 15px repeat(10, minmax(0, 1fr));
+    grid-template-columns: 15px repeat(10, minmax(28px, 1fr));
     gap: 3px;
   }
 
